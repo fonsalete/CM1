@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Ferme aux Divisions - CM1</title>
+    <!-- Chargement de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Police ludique et lisible pour enfants (Fredoka & Nunito) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+    <!-- Tone.js pour des petits sons joyeux synthétisés (sans fichiers externes) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Canvas Confetti pour célébrer les victoires -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #FEF9E7;
+            background-image: radial-gradient(#FDEBD0 2px, transparent 2px);
+            background-size: 28px 28px;
+            color: #2C3E50;
+            overflow-x: hidden;
+        }
+        h1, h2, h3, .font-fun {
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        /* Animations personnalisées */
+        @keyframes pulse-border {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            50% { transform: scale(1.06); box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+        }
+        .active-cell {
+            animation: pulse-border 1.5s infinite;
+            border-color: #F59E0B !important;
+            background-color: #FEF3C7 !important;
+        }
+
+        @keyframes bounce-drop {
+            0% { transform: translateY(-25px); opacity: 0; }
+            60% { transform: translateY(4px); opacity: 1; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        .animate-drop {
+            animation: bounce-drop 0.5s ease-out forwards;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+        .animate-shake {
+            animation: shake 0.35s ease-in-out;
+        }
+
+        /* Style spécifique pour la potence de division */
+        .potence-grid {
+            font-family: 'Fredoka', monospace;
+            font-variant-numeric: tabular-nums;
+        }
+        .digit-box {
+            width: 2.6rem;
+            height: 2.9rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            border-radius: 0.65rem;
+            transition: all 0.2s ease;
+        }
+        @media (min-width: 640px) {
+            .digit-box {
+                width: 3rem;
+                height: 3.3rem;
+                font-size: 1.75rem;
+            }
+        }
+
+        /* Masquer les flèches des inputs numériques */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        /* Bouton style 3D ludique */
+        .btn-3d {
+            transition: all 0.1s ease;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.18);
+        }
+        .btn-3d:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 rgba(0,0,0,0.18);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- EN-TÊTE JOYEUX -->
+    <header class="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 text-white shadow-md sticky top-0 z-30">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-3">
+                <div class="bg-white text-amber-500 w-11 h-11 rounded-2xl flex items-center justify-center text-2xl shadow-inner font-bold">
+                    🐔
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-bold tracking-wide drop-shadow-sm">La Ferme aux Divisions</h1>
+                    <p class="text-xs sm:text-sm text-amber-100 font-semibold">Mission CM1 : Comprendre & Poser la Division Euclidienne</p>
+                </div>
+            </div>
+
+            <!-- Barre d'outils rapide (Score, Mémo Cours, Son) -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <div class="bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-xl flex items-center gap-1.5 font-bold text-sm sm:text-base border border-white/30">
+                    <span>⭐</span>
+                    <span id="star-count">0</span>
+                    <span class="hidden sm:inline">étoiles</span>
+                </div>
+
+                <label class="btn-3d bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold px-3 py-1.5 rounded-xl text-sm flex items-center gap-1.5 cursor-pointer select-none" title="Afficher ou masquer la table du diviseur">
+                    <input type="checkbox" id="toggle-cheat-sheet" onchange="toggleCheatSheetOption(this.checked)" class="w-4 h-4 accent-amber-600 rounded cursor-pointer">
+                    <span>💡 Antisèche</span>
+                </label>
+
+                <button onclick="toggleModal('memo-modal')" class="btn-3d bg-sky-500 hover:bg-sky-600 text-white font-bold px-3 py-1.5 rounded-xl text-sm flex items-center gap-1.5 cursor-pointer">
+                    <span>📖</span>
+                    <span>Mémo CM1</span>
+                </button>
+
+                <button id="sound-btn" onclick="toggleSound()" class="btn-3d bg-white text-amber-600 hover:bg-amber-50 font-bold p-2 rounded-xl text-sm cursor-pointer" title="Activer/Désactiver les sons">
+                    🔊
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- SÉLECTEUR DE NIVEAUX ET DÉFIS -->
+    <nav class="max-w-6xl mx-auto w-full px-4 pt-4">
+        <div class="bg-white rounded-2xl p-3 shadow-sm border-2 border-amber-200 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-extrabold uppercase tracking-wider text-amber-700 mr-1">Choisis ton défi :</span>
+                <button onclick="selectPreset('cours1')" id="btn-preset-cours1" class="preset-btn btn-3d px-3 py-1.5 rounded-xl text-sm font-bold bg-amber-500 text-white cursor-pointer">
+                    🍬 Niveau 1 : Cours (314 ÷ 7)
+                </button>
+                <button onclick="selectPreset('cours2')" id="btn-preset-cours2" class="preset-btn btn-3d px-3 py-1.5 rounded-xl text-sm font-bold bg-amber-100 text-amber-900 hover:bg-amber-200 cursor-pointer">
+                    🚜 Niveau 2 : Cours (1520 ÷ 63)
+                </button>
+                <button onclick="generateRandomProblem()" class="btn-3d px-3 py-1.5 rounded-xl text-sm font-bold bg-emerald-100 text-emerald-800 hover:bg-emerald-200 cursor-pointer">
+                    🎲 Défi Hasard
+                </button>
+            </div>
+
+            <button onclick="toggleModal('custom-modal')" class="btn-3d px-3 py-1.5 rounded-xl text-sm font-bold bg-purple-100 text-purple-800 hover:bg-purple-200 cursor-pointer">
+                ✏️ Mon Problème Perso
+            </button>
+        </div>
+    </nav>
+
+    <!-- CONTENU PRINCIPAL -->
+    <main class="max-w-6xl mx-auto w-full px-4 py-5 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- COLONNE GAUCHE (5 colonnes) : L'HISTOIRE & L'ATELIER VISUEL CONCRET -->
+        <section class="lg:col-span-5 flex flex-col gap-5">
+            
+            <!-- Carte de l'énoncé ludique -->
+            <div class="bg-white rounded-3xl p-5 shadow-md border-2 border-amber-200 relative overflow-hidden">
+                <div class="flex items-start gap-3">
+                    <div id="story-emoji" class="text-4xl bg-amber-100 p-3 rounded-2xl shadow-inner">🥚</div>
+                    <div>
+                        <span class="inline-block bg-amber-100 text-amber-800 text-xs font-extrabold px-2.5 py-0.5 rounded-full mb-1">L'HISTOIRE DU JOUR</span>
+                        <h2 id="story-title" class="text-lg font-bold text-gray-800">La récolte des œufs de la ferme</h2>
+                        <p id="story-text" class="text-sm text-gray-600 mt-1 leading-relaxed">
+                            Papi Marcel a ramassé <strong class="text-blue-600">451 œufs</strong> ce matin. Il veut les ranger dans des boîtes de <strong class="text-emerald-600">12 œufs</strong>. Combien de boîtes complètes va-t-il remplir, et combien d'œufs restera-t-il tout seuls ?
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Rappel des 4 rôles avec code couleur -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 pt-3 border-t border-dashed border-gray-200 text-center">
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-1.5">
+                        <div class="text-[11px] font-bold text-blue-500 uppercase">Dividende</div>
+                        <div id="badge-dividend" class="text-base font-extrabold text-blue-700">451</div>
+                        <div class="text-[10px] text-blue-600">Total à partager</div>
+                    </div>
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-1.5">
+                        <div class="text-[11px] font-bold text-emerald-500 uppercase">Diviseur</div>
+                        <div id="badge-divisor" class="text-base font-extrabold text-emerald-700">12</div>
+                        <div class="text-[10px] text-emerald-600">Taille d'un paquet</div>
+                    </div>
+                    <div class="bg-purple-50 border border-purple-200 rounded-xl p-1.5">
+                        <div class="text-[11px] font-bold text-purple-500 uppercase">Quotient</div>
+                        <div id="badge-quotient" class="text-base font-extrabold text-purple-700">?</div>
+                        <div class="text-[10px] text-purple-600">Nb de boîtes</div>
+                    </div>
+                    <div class="bg-rose-50 border border-rose-200 rounded-xl p-1.5">
+                        <div class="text-[11px] font-bold text-rose-500 uppercase">Reste</div>
+                        <div id="badge-remainder" class="text-base font-extrabold text-rose-700">?</div>
+                        <div class="text-[10px] text-rose-600">Ce qui dépasse</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Atelier Visuel : Comprendre ce qui se passe en vrai ! -->
+            <div class="bg-white rounded-3xl p-5 shadow-md border-2 border-sky-200 flex-grow flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-bold text-sky-900 flex items-center gap-2">
+                        <span>🧺</span> Atelier Visuel : On range !
+                    </h3>
+                    <span id="visual-status-pill" class="text-xs font-bold bg-sky-100 text-sky-800 px-2.5 py-1 rounded-full">
+                        Synchronisé avec la potence
+                    </span>
+                </div>
+
+                <p class="text-xs text-gray-600 mb-3">
+                    Regarde comment les <strong id="vis-total-label">451</strong> objets se rangent dans des boîtes de <strong id="vis-div-label">12</strong> au fur et à mesure que tu avances dans la division !
+                </p>
+
+                <!-- Zone de visualisation dynamique -->
+                <div id="visual-workshop" class="bg-sky-50/70 rounded-2xl p-4 border border-sky-100 flex-grow flex flex-col justify-between gap-4">
+                    
+                    <!-- Stock restant à ranger -->
+                    <div class="bg-white rounded-xl p-3 border border-blue-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-extrabold text-blue-700 uppercase">📦 Stock encore à ranger :</span>
+                            <span id="vis-remaining-count" class="text-lg font-extrabold text-blue-700">451</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                            <div id="vis-progress-bar" class="bg-blue-500 h-3 rounded-full transition-all duration-500" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Boîtes / Rangées remplies -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-extrabold text-purple-700 uppercase">✅ Boîtes complètes remplies (<span id="vis-box-size">12</span> / boîte) :</span>
+                            <span id="vis-boxes-count" class="text-lg font-extrabold text-purple-700">0 boîte</span>
+                        </div>
+                        <div id="vis-boxes-container" class="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-2 bg-white rounded-xl border border-purple-100 min-h-[70px] items-center justify-center">
+                            <span class="text-xs text-gray-400 italic">Commence la division à droite pour remplir les boîtes !</span>
+                        </div>
+                    </div>
+
+                    <!-- Le Reste final -->
+                    <div id="vis-leftover-box" class="bg-rose-50 rounded-xl p-3 border border-rose-200 hidden">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-extrabold text-rose-700 uppercase">🥚 Reste tout seul (trop petit pour une boîte de <span id="vis-div-label-2">12</span>) :</span>
+                            <span id="vis-leftover-count" class="text-lg font-extrabold text-rose-700">0</span>
+                        </div>
+                        <div id="vis-leftover-icons" class="flex flex-wrap gap-1 mt-1.5 text-base"></div>
+                    </div>
+
+                </div>
+
+                <!-- Zone antisèche (masquée par défaut, activable via la case dans le bandeau du haut) -->
+                <div id="cheat-sheet-wrapper" class="hidden mt-4 bg-amber-50 border border-amber-200 rounded-2xl p-3 animate-drop">
+                    <div class="text-xs font-extrabold text-amber-900 uppercase mb-2 flex items-center gap-1.5">
+                        <span>💡</span> Table de <span id="table-divisor-title">12</span>
+                    </div>
+                    <div id="helper-table-container" class="grid grid-cols-3 sm:grid-cols-5 gap-1.5 text-center text-xs font-bold">
+                        <!-- Rempli dynamiquement en JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- COLONNE DROITE (7 colonnes) : LA POTENCE MAGIQUE PAS-À-PAS -->
+        <section class="lg:col-span-7 flex flex-col gap-4">
+            <div class="bg-white rounded-3xl p-5 sm:p-6 shadow-md border-2 border-amber-300 flex-grow flex flex-col justify-between">
+                
+                <!-- En-tête de la potence -->
+                <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-gray-100">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                            <span>🪄</span> La Potence Magique
+                        </h2>
+                        <p class="text-xs text-gray-500">Suis la case qui clignote en jaune pour savoir où poser chaque chiffre !</p>
+                    </div>
+                    <button onclick="resetCurrentProblem()" class="text-xs font-bold text-gray-500 hover:text-amber-600 bg-gray-100 hover:bg-amber-50 px-3 py-1.5 rounded-xl transition cursor-pointer">
+                        🔄 Recommencer
+                    </button>
+                </div>
+
+                <!-- BULLE DE GUIDAGE PÉDAGOGIQUE (Le coach bienveillant) -->
+                <div id="coach-box" class="my-4 bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-500 rounded-2xl p-4 shadow-sm">
+                    <div class="flex items-start gap-3">
+                        <div class="text-3xl select-none" id="coach-avatar">🦉</div>
+                        <div class="flex-grow">
+                            <div class="flex items-center justify-between">
+                                <span id="step-badge" class="text-xs font-extrabold uppercase tracking-wider text-amber-700 bg-amber-200/70 px-2 py-0.5 rounded-md">
+                                    Étape 1
+                                </span>
+                                <span id="feedback-msg" class="text-xs font-bold text-rose-600"></span>
+                            </div>
+                            <p id="coach-instruction" class="text-sm sm:text-base font-bold text-gray-800 mt-1.5">
+                                Chargement...
+                            </p>
+                            <p id="coach-hint" class="text-xs text-gray-600 mt-1">
+                                Regarde bien les couleurs sur la potence ci-dessous.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Zone d'interaction directe (Choix multiple ou saisie clavier selon l'étape) -->
+                    <div id="step-controls" class="mt-3 pt-3 border-t border-amber-200/60 flex flex-wrap items-center gap-2">
+                        <!-- Injecté dynamiquement par JS -->
+                    </div>
+                </div>
+
+                <!-- LA POTENCE VISUELLE INTERACTIVE -->
+                <div class="bg-slate-50 rounded-2xl p-4 sm:p-6 border-2 border-slate-200 overflow-x-auto flex justify-center items-start min-h-[290px]">
+                    <div id="potence-board" class="potence-grid inline-flex flex-col select-none">
+                        <!-- Généré dynamiquement par JS -->
+                    </div>
+                </div>
+
+                <!-- ENCADRÉ DE VÉRIFICATION FINALE (Apparaît à la fin de la division) -->
+                <div id="verification-panel" class="hidden mt-4 bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-4 animate-drop">
+                    <h3 class="text-base font-bold text-emerald-900 flex items-center gap-2">
+                        <span>🏆</span> Bravo ! Vérifions ton calcul comme dans le cours de CM1 :
+                    </h3>
+                    <p class="text-xs text-emerald-800 mt-1">
+                        Règle d'or : Le reste (<strong id="verif-r-rule"></strong>) est bien plus petit que le diviseur (<strong id="verif-d-rule"></strong>) !
+                        Complète maintenant l'égalité magique :
+                    </p>
+                    <div class="mt-3 flex flex-wrap items-center justify-center gap-2 text-base sm:text-lg font-extrabold text-gray-800 bg-white p-3 rounded-xl border border-emerald-200">
+                        <span>(</span>
+                        <span class="text-emerald-600" id="verif-divisor">12</span>
+                        <span>×</span>
+                        <input type="number" id="verif-input-q" placeholder="Quotient" class="w-20 text-center border-2 border-purple-300 focus:border-purple-500 rounded-lg py-1 text-purple-700 outline-none">
+                        <span>) +</span>
+                        <input type="number" id="verif-input-r" placeholder="Reste" class="w-16 text-center border-2 border-rose-300 focus:border-rose-500 rounded-lg py-1 text-rose-700 outline-none">
+                        <span>=</span>
+                        <span class="text-blue-600" id="verif-dividend">451</span>
+                        <button onclick="checkFinalVerification()" class="btn-3d bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold px-4 py-1.5 rounded-xl ml-2 cursor-pointer">
+                            Valider ! ✨
+                        </button>
+                    </div>
+                    <p id="verif-feedback" class="text-center text-xs font-bold mt-2 text-rose-600"></p>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <!-- MODALE : MÉMO DU COURS CM1 -->
+    <div id="memo-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border-4 border-sky-400 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h2 class="text-2xl font-bold text-sky-900 flex items-center gap-2">
+                    <span>📖</span> Le Mémo du Cours CM1
+                </h2>
+                <button onclick="toggleModal('memo-modal')" class="text-gray-400 hover:text-gray-700 text-2xl font-bold cursor-pointer">&times;</button>
+            </div>
+
+            <div class="space-y-4 text-sm text-gray-700">
+                <div class="bg-sky-50 p-4 rounded-2xl border border-sky-200">
+                    <h3 class="font-bold text-sky-900 text-base mb-2">1. Les 4 mots magiques à connaître</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div class="bg-white p-2.5 rounded-xl border-l-4 border-blue-500">
+                            <strong class="text-blue-700">Le Dividende :</strong> C'est le grand nombre que l'on partage (en haut à gauche).
+                        </div>
+                        <div class="bg-white p-2.5 rounded-xl border-l-4 border-emerald-500">
+                            <strong class="text-emerald-700">Le Diviseur :</strong> C'est le nombre de parts ou la taille d'un paquet (en haut à droite).
+                        </div>
+                        <div class="bg-white p-2.5 rounded-xl border-l-4 border-purple-500">
+                            <strong class="text-purple-700">Le Quotient :</strong> C'est le résultat de la division (sous le diviseur).
+                        </div>
+                        <div class="bg-white p-2.5 rounded-xl border-l-4 border-rose-500">
+                            <strong class="text-rose-700">Le Reste :</strong> C'est ce qu'il reste à la fin quand on ne peut plus faire de paquet (en bas à gauche).
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200">
+                    <h3 class="font-bold text-amber-900 text-base mb-1">2. Les 2 règles d'or de la division</h3>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li><strong>Règle n°1 :</strong> Le <span class="text-rose-600 font-bold">reste</span> doit toujours être <strong>plus petit</strong> que le <span class="text-emerald-600 font-bold">diviseur</span>.</li>
+                        <li><strong>Règle n°2 (Vérification) :</strong> <span class="font-bold bg-white px-2 py-0.5 rounded border">(Diviseur × Quotient) + Reste = Dividende</span>.</li>
+                    </ul>
+                </div>
+
+                <div class="bg-purple-50 p-4 rounded-2xl border border-purple-200">
+                    <h3 class="font-bold text-purple-900 text-base mb-1">3. Les 4 gestes pour poser la division</h3>
+                    <ol class="list-decimal pl-5 space-y-1">
+                        <li><strong>Je prends</strong> assez de chiffres à gauche du dividende (un nombre plus grand ou égal au diviseur).</li>
+                        <li><strong>Je cherche</strong> combien de fois le diviseur rentre dans ce nombre, et j'écris ce chiffre au <span class="text-purple-700 font-bold">quotient</span>.</li>
+                        <li><strong>Je multiplie</strong> ce chiffre par le diviseur, j'écris le résultat à gauche et <strong>je soustrais</strong> pour trouver le reste.</li>
+                        <li><strong>J'abaisse</strong> le chiffre suivant à côté du reste, et je recommence !</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="mt-5 text-center">
+                <button onclick="toggleModal('memo-modal')" class="btn-3d bg-sky-500 hover:bg-sky-600 text-white font-bold px-6 py-2.5 rounded-xl cursor-pointer">
+                    J'ai compris, retour au jeu ! 🚀
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE : CRÉER SON PROPRE PROBLÈME -->
+    <div id="custom-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-4 border-purple-400">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h2 class="text-xl font-bold text-purple-900 flex items-center gap-2">
+                    <span>✏️</span> Mon Problème Perso
+                </h2>
+                <button onclick="toggleModal('custom-modal')" class="text-gray-400 hover:text-gray-700 text-2xl font-bold cursor-pointer">&times;</button>
+            </div>
+
+            <p class="text-xs text-gray-600 mb-4">
+                Entre les nombres de ton exercice de maths pour que la Potence Magique t'aide à le résoudre pas à pas !
+            </p>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-extrabold text-blue-700 uppercase mb-1">Dividende (Nombre à partager, max 9999)</label>
+                    <input type="number" id="custom-dividend" value="451" min="10" max="9999" class="w-full border-2 border-blue-200 focus:border-blue-500 rounded-xl p-2.5 text-lg font-bold text-blue-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-extrabold text-emerald-700 uppercase mb-1">Diviseur (Taille des paquets, de 2 à 99)</label>
+                    <input type="number" id="custom-divisor" value="12" min="2" max="99" class="w-full border-2 border-emerald-200 focus:border-emerald-500 rounded-xl p-2.5 text-lg font-bold text-emerald-900 outline-none">
+                </div>
+                <p id="custom-error" class="text-xs font-bold text-rose-600 hidden"></p>
+            </div>
+
+            <div class="mt-5 flex justify-end gap-2">
+                <button onclick="toggleModal('custom-modal')" class="px-4 py-2 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 cursor-pointer">
+                    Annuler
+                </button>
+                <button onclick="applyCustomProblem()" class="btn-3d bg-purple-600 hover:bg-purple-700 text-white font-bold px-5 py-2 rounded-xl text-sm cursor-pointer">
+                    C'est parti ! ✨
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT PRINCIPAL DE L'APPLICATION -->
+    <script>
+        // --- 1. GESTION DU SON (Tone.js) ---
+        let soundEnabled = true;
+        let synth = null;
+
+        function initAudio() {
+            if (!synth && typeof Tone !== 'undefined') {
+                synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                synth.volume.value = -8;
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (!synth) return;
+                if (Tone.context.state !== 'running') {
+                    Tone.start();
+                }
+                if (type === 'success') {
+                    synth.triggerAttackRelease(["C5", "E5"], "16n");
+                } else if (type === 'error') {
+                    synth.triggerAttackRelease(["G3", "F#3"], "8n");
+                } else if (type === 'win') {
+                    const now = Tone.now();
+                    synth.triggerAttackRelease("C5", "16n", now);
+                    synth.triggerAttackRelease("E5", "16n", now + 0.1);
+                    synth.triggerAttackRelease("G5", "16n", now + 0.2);
+                    synth.triggerAttackRelease("C6", "4n", now + 0.3);
+                }
+            } catch (e) {
+                // Ignorer silencieusement si l'audio est bloqué par le navigateur
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('sound-btn').textContent = soundEnabled ? '🔊' : '🔇';
+        }
+
+        // --- 2. DONNÉES DES PROBLÈMES PRÉDÉFINIS ---
+        const PRESETS = {
+            cours1: {
+                dividend: 314,
+                divisor: 7,
+                emoji: "🍬",
+                itemIcon: "🍬",
+                boxIcon: "🛍️",
+                title: "Les sachets de bonbons (Exemple du cours CM1)",
+                text: "La boulangère a <strong class='text-blue-600'>314 bonbons</strong> à répartir dans des sachets de <strong class='text-emerald-600'>7 bonbons</strong>. Combien de sachets peut-elle préparer, et combien de bonbons restera-t-il ?"
+            },
+            cours2: {
+                dividend: 1520,
+                divisor: 63,
+                emoji: "🚜",
+                itemIcon: "🍎",
+                boxIcon: "🧺",
+                title: "Les paniers de pommes (Défi 2 chiffres du cours CM1)",
+                text: "Au verger, on a cueilli <strong class='text-blue-600'>1520 pommes</strong> que l'on range dans de grandes caisses de <strong class='text-emerald-600'>63 pommes</strong>. Combien de caisses complètes obtient-on ?"
+            }
+        };
+
+        // --- 3. ÉTAT GLOBAL DU JEU ---
+        let state = {
+            dividend: 314,
+            divisor: 7,
+            emoji: "🍬",
+            itemIcon: "🍬",
+            boxIcon: "🛍️",
+            stars: 0,
+            steps: [],         // Liste ordonnée des micro-étapes à accomplir
+            currentStepIdx: 0, // Index de l'étape actuelle
+            completedSteps: [],// Historique des étapes validées pour affichage sur la potence
+            boxesPacked: 0,    // Nombre de boîtes remplies visuellement
+            completed: false
+        };
+
+        // --- 4. UTILITAIRES D'INTERFACE ---
+        function toggleModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+            modal.classList.toggle('hidden');
+            if (modalId === 'custom-modal' && !modal.classList.contains('hidden')) {
+                document.getElementById('custom-error').classList.add('hidden');
+            }
+        }
+
+        function toggleCheatSheetOption(isChecked) {
+            const wrapper = document.getElementById('cheat-sheet-wrapper');
+            if (!wrapper) return;
+            if (isChecked) {
+                wrapper.classList.remove('hidden');
+            } else {
+                wrapper.classList.add('hidden');
+            }
+            // Mettre à jour l'indice de l'étape courante si besoin
+            const step = state.steps[state.currentStepIdx];
+            if (step && step.type === 'quotient') {
+                document.getElementById('coach-hint').textContent = getQuotientHint(state.divisor, step.currentVal);
+            }
+        }
+
+        function getQuotientHint(divisor, currentVal) {
+            const isCheatChecked = document.getElementById('toggle-cheat-sheet')?.checked;
+            if (isCheatChecked) {
+                return `Aide-toi de l'antisèche : cherche le multiple de ${divisor} le plus proche de ${currentVal} sans le dépasser !`;
+            }
+            return `Cherche dans la table de ${divisor} le multiple le plus proche de ${currentVal} sans le dépasser !`;
+        }
+
+        function updateHelperTable(divisor) {
+            document.getElementById('table-divisor-title').textContent = divisor;
+            const container = document.getElementById('helper-table-container');
+            container.innerHTML = '';
+            for (let i = 1; i <= 9; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'bg-white border border-amber-200 rounded-lg py-1 px-1.5 text-amber-900 shadow-2xs';
+                cell.innerHTML = `<span class="text-emerald-600">${divisor}</span> × <span class="text-purple-600">${i}</span> = <strong>${divisor * i}</strong>`;
+                container.appendChild(cell);
+            }
+        }
+
+        // --- 5. SÉLECTION ET GÉNÉRATION DES PROBLÈMES ---
+        function selectPreset(key) {
+            const preset = PRESETS[key];
+            if (!preset) return;
+
+            // Mise à jour visuelle des boutons de sélection
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.remove('bg-amber-500', 'text-white');
+                btn.classList.add('bg-amber-100', 'text-amber-900');
+            });
+            const activeBtn = document.getElementById(`btn-preset-${key}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-amber-100', 'text-amber-900');
+                activeBtn.classList.add('bg-amber-500', 'text-white');
+            }
+
+            loadProblem(preset.dividend, preset.divisor, preset.emoji, preset.itemIcon, preset.boxIcon, preset.title, preset.text);
+        }
+
+        function generateRandomProblem() {
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.remove('bg-amber-500', 'text-white');
+                btn.classList.add('bg-amber-100', 'text-amber-900');
+            });
+
+            const themes = [
+                { emoji: "🍓", itemIcon: "🍓", boxIcon: "🧺", title: "La cueillette des fraises", item: "fraises", box: "barquettes" },
+                { emoji: "🍪", itemIcon: "🍪", boxIcon: "🎁", title: "Les biscuits du goûter", item: "biscuits", box: "paquets" },
+                { emoji: "🌻", itemIcon: "🌻", boxIcon: "💐", title: "Les bouquets du fleuriste", item: "tournesols", box: "bouquets" },
+                { emoji: "🐟", itemIcon: "🐟", boxIcon: "🪣", title: "La pêche du matin", item: "poissons", box: "seaux" }
+            ];
+            const theme = themes[Math.floor(Math.random() * themes.length)];
+            // Diviseur entre 3 et 15 pour rester adapté au CM1
+            const divisor = Math.floor(Math.random() * 13) + 3;
+            const dividend = Math.floor(Math.random() * 750) + 120;
+
+            const text = `Pour "${theme.title.toLowerCase()}", on a récolté <strong class="text-blue-600">${dividend} ${theme.item}</strong>. On veut faire des ${theme.box} de <strong class="text-emerald-600">${divisor} ${theme.item}</strong>. Combien de ${theme.box} obtient-on et combien en reste-t-il ?`;
+            loadProblem(dividend, divisor, theme.emoji, theme.itemIcon, theme.boxIcon, theme.title, text);
+        }
+
+        function applyCustomProblem() {
+            const divInput = parseInt(document.getElementById('custom-dividend').value, 10);
+            const dvrInput = parseInt(document.getElementById('custom-divisor').value, 10);
+            const errEl = document.getElementById('custom-error');
+
+            if (isNaN(divInput) || isNaN(dvrInput) || divInput < 10 || divInput > 9999 || dvrInput < 2 || dvrInput > 99 || divInput < dvrInput) {
+                errEl.textContent = "Choisis un dividende (10 à 9999) plus grand que le diviseur (2 à 99) !";
+                errEl.classList.remove('hidden');
+                playSound('error');
+                return;
+            }
+
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.remove('bg-amber-500', 'text-white');
+                btn.classList.add('bg-amber-100', 'text-amber-900');
+            });
+
+            toggleModal('custom-modal');
+            const text = `Tu as choisi de partager <strong class="text-blue-600">${divInput}</strong> en paquets de <strong class="text-emerald-600">${dvrInput}</strong>. Suis les cases jaunes sur la potence !`;
+            loadProblem(divInput, dvrInput, "✏️", "⭐", "📦", `Mon défi perso : ${divInput} ÷ ${dvrInput}`, text);
+        }
+
+        function resetCurrentProblem() {
+            const currentTitle = document.getElementById('story-title').textContent;
+            const currentText = document.getElementById('story-text').innerHTML;
+            loadProblem(state.dividend, state.divisor, state.emoji, state.itemIcon, state.boxIcon, currentTitle, currentText);
+        }
+
+        // --- 6. MOTEUR PÉDAGOGIQUE DE LA DIVISION EUCLIDIENNE ---
+        function computeDivisionSteps(dividend, divisor) {
+            const digits = String(dividend).split('').map(Number);
+            const steps = [];
+            let idx = 0;
+            let currentVal = digits[0];
+
+            // Prendre assez de chiffres à gauche pour dépasser ou égaler le diviseur
+            while (currentVal < divisor && idx + 1 < digits.length) {
+                idx++;
+                currentVal = currentVal * 10 + digits[idx];
+            }
+
+            // Étape 0 : Sélectionner la partie de départ du dividende
+            steps.push({
+                type: 'take',
+                endCol: idx,
+                value: currentVal,
+                instruction: `Étape 1 : On commence à gauche ! Quel nombre prend-on dans ${dividend} pour pouvoir le partager par ${divisor} ?`,
+                hint: `Il faut prendre un nombre plus grand ou égal à ${divisor}.`
+            });
+
+            let stepLoop = 0;
+            while (true) {
+                const qDigit = Math.floor(currentVal / divisor);
+                const product = qDigit * divisor;
+                const remainder = currentVal - product;
+
+                // Étape A : Trouver le chiffre du quotient
+                steps.push({
+                    type: 'quotient',
+                    qIndex: stepLoop,
+                    currentVal: currentVal,
+                    expected: qDigit,
+                    instruction: `Combien de fois ${divisor} rentre-t-il dans ${currentVal} ? Écris ce chiffre dans la case du Quotient (en violet).`,
+                    hint: `Cherche dans la table de ${divisor} le multiple le plus proche de ${currentVal} sans le dépasser !`
+                });
+
+                // Étape B : Écrire le produit à soustraire
+                steps.push({
+                    type: 'product',
+                    rowIndex: stepLoop,
+                    endCol: idx,
+                    qDigit: qDigit,
+                    expected: product,
+                    instruction: `Maintenant on multiplie : ${qDigit} × ${divisor} = ? Écris le résultat sous ${currentVal} pour l'enlever.`,
+                    hint: `Regarde dans la table de ${divisor} : ${divisor} × ${qDigit} = ${product}.`
+                });
+
+                // Étape C : Calculer la soustraction (reste partiel ou final)
+                const isLast = (idx + 1 >= digits.length);
+                steps.push({
+                    type: 'remainder',
+                    rowIndex: stepLoop,
+                    endCol: idx,
+                    currentVal: currentVal,
+                    product: product,
+                    expected: remainder,
+                    isFinal: isLast,
+                    instruction: `On soustrait : ${currentVal} − ${product} = ? Écris ce qu'il reste.`,
+                    hint: `Calcule la différence entre ${currentVal} et ${product}.`
+                });
+
+                if (isLast) break;
+
+                // Étape D : Abaisser le chiffre suivant du dividende
+                idx++;
+                const nextDigit = digits[idx];
+                const newVal = remainder * 10 + nextDigit;
+
+                steps.push({
+                    type: 'bringdown',
+                    rowIndex: stepLoop,
+                    colIndex: idx,
+                    digit: nextDigit,
+                    remainder: remainder,
+                    newVal: newVal,
+                    instruction: `On abaisse le chiffre suivant (${nextDigit}) à côté du reste ${remainder} pour former ${newVal} !`,
+                    hint: `Clique sur le bouton pour faire descendre le ${nextDigit}.`
+                });
+
+                currentVal = newVal;
+                stepLoop++;
+            }
+
+            return steps;
+        }
+
+        function loadProblem(dividend, divisor, emoji, itemIcon, boxIcon, title, text) {
+            state.dividend = dividend;
+            state.divisor = divisor;
+            state.emoji = emoji;
+            state.itemIcon = itemIcon;
+            state.boxIcon = boxIcon;
+            state.steps = computeDivisionSteps(dividend, divisor);
+            state.currentStepIdx = 0;
+            state.completedSteps = [];
+            state.boxesPacked = 0;
+            state.completed = false;
+
+            // Mise à jour de l'histoire et des badges
+            document.getElementById('story-emoji').textContent = emoji;
+            document.getElementById('story-title').textContent = title;
+            document.getElementById('story-text').innerHTML = text;
+
+            document.getElementById('badge-dividend').textContent = dividend;
+            document.getElementById('badge-divisor').textContent = divisor;
+            document.getElementById('badge-quotient').textContent = '?';
+            document.getElementById('badge-remainder').textContent = '?';
+
+            // Mise à jour de l'atelier visuel
+            document.getElementById('vis-total-label').textContent = dividend;
+            document.getElementById('vis-div-label').textContent = divisor;
+            document.getElementById('vis-div-label-2').textContent = divisor;
+            document.getElementById('vis-box-size').textContent = divisor;
+            document.getElementById('vis-leftover-box').classList.add('hidden');
+            document.getElementById('verification-panel').classList.add('hidden');
+
+            updateHelperTable(divisor);
+            updateVisualWorkshop(dividend, 0, null);
+            renderPotence();
+            renderCurrentStep();
+        }
+
+        // --- 7. RENDU DE LA POTENCE INTERACTIVE ---
+        function renderPotence() {
+            const board = document.getElementById('potence-board');
+            const divStr = String(state.dividend);
+            const numCols = divStr.length;
+            const currentStep = state.steps[state.currentStepIdx];
+
+            // Extraire l'état avancé à partir des étapes complétées
+            const takeStep = state.completedSteps.find(s => s.type === 'take');
+            const qDigits = state.completedSteps.filter(s => s.type === 'quotient').map(s => s.expected);
+            const products = state.completedSteps.filter(s => s.type === 'product');
+            const remainders = state.completedSteps.filter(s => s.type === 'remainder');
+            const bringdowns = state.completedSteps.filter(s => s.type === 'bringdown');
+
+            // Nombre total de chiffres attendus au quotient
+            const totalQDigits = state.steps.filter(s => s.type === 'quotient').length;
+
+            // Construction de la colonne de gauche (Dividende et soustractions)
+            let leftHtml = `<div class="flex flex-col pr-3 sm:pr-5">`;
+
+            // Ligne 0 : Les chiffres du Dividende avec l'arc de sélection
+            leftHtml += `<div class="flex items-center gap-1 relative pt-2">`;
+            for (let c = 0; c < numCols; c++) {
+                const isTaken = takeStep && c <= takeStep.endCol;
+                const borderTop = isTaken ? 'border-t-4 border-amber-500 rounded-t-xl' : '';
+                leftHtml += `<div class="digit-box bg-blue-50 text-blue-800 border-2 border-blue-200 ${borderTop}">${divStr[c]}</div>`;
+            }
+            leftHtml += `</div>`;
+
+            // Lignes de calculs successives (produits, restes et chiffres abaissés)
+            const maxRow = Math.max(
+                products.length - 1,
+                remainders.length - 1,
+                currentStep && currentStep.rowIndex !== undefined ? currentStep.rowIndex : -1
+            );
+
+            for (let r = 0; r <= maxRow; r++) {
+                const prodObj = products.find(p => p.rowIndex === r);
+                const remObj = remainders.find(rem => rem.rowIndex === r);
+                const bdObj = bringdowns.find(bd => bd.rowIndex === r);
+
+                const isCurrentProd = currentStep && currentStep.type === 'product' && currentStep.rowIndex === r;
+                const isCurrentRem = currentStep && currentStep.type === 'remainder' && currentStep.rowIndex === r;
+                const isCurrentBd = currentStep && currentStep.type === 'bringdown' && currentStep.rowIndex === r;
+
+                // Ligne du produit soustrait (- XX)
+                if (prodObj || isCurrentProd) {
+                    const endCol = prodObj ? prodObj.endCol : currentStep.endCol;
+                    const pStr = prodObj ? String(prodObj.expected) : '?';
+                    const startCol = endCol - (prodObj ? pStr.length - 1 : String(currentStep.expected).length - 1);
+
+                    leftHtml += `<div class="flex items-center gap-1 mt-1 border-b-2 border-slate-400 pb-1">`;
+                    for (let c = 0; c < numCols; c++) {
+                        if (c === startCol - 1) {
+                            leftHtml += `<div class="digit-box text-slate-500 text-lg">−</div>`;
+                        } else if (c >= startCol && c <= endCol) {
+                            if (prodObj) {
+                                const ch = pStr[c - startCol];
+                                leftHtml += `<div class="digit-box bg-slate-100 text-slate-700 border border-slate-300 animate-drop">${ch}</div>`;
+                            } else {
+                                leftHtml += `<div class="digit-box active-cell border-2 text-amber-700">?</div>`;
+                            }
+                        } else {
+                            leftHtml += `<div class="digit-box opacity-0"></div>`;
+                        }
+                    }
+                    leftHtml += `</div>`;
+                }
+
+                // Ligne du reste (+ éventuel chiffre abaissé)
+                if (remObj || isCurrentRem || bdObj || isCurrentBd) {
+                    const endCol = remObj ? remObj.endCol : currentStep.endCol;
+                    const rStr = remObj ? String(remObj.expected) : '?';
+                    const startCol = endCol - (remObj ? rStr.length - 1 : String(currentStep.expected).length - 1);
+                    const isFinalRem = remObj && remObj.isFinal;
+
+                    leftHtml += `<div class="flex items-center gap-1 mt-1">`;
+                    for (let c = 0; c < numCols; c++) {
+                        if (c >= startCol && c <= endCol) {
+                            if (remObj) {
+                                const ch = rStr[c - startCol];
+                                const remStyle = isFinalRem
+                                    ? 'bg-rose-100 text-rose-800 border-2 border-rose-400'
+                                    : 'bg-sky-50 text-sky-900 border border-sky-200';
+                                leftHtml += `<div class="digit-box ${remStyle} animate-drop">${ch}</div>`;
+                            } else {
+                                leftHtml += `<div class="digit-box active-cell border-2 text-amber-700">?</div>`;
+                            }
+                        } else if (bdObj && c === bdObj.colIndex) {
+                            leftHtml += `<div class="digit-box bg-amber-100 text-amber-900 border-2 border-amber-400 animate-drop">${bdObj.digit}</div>`;
+                        } else if (isCurrentBd && c === currentStep.colIndex) {
+                            leftHtml += `<div class="digit-box active-cell border-2 text-amber-700">↓</div>`;
+                        } else {
+                            leftHtml += `<div class="digit-box opacity-0"></div>`;
+                        }
+                    }
+                    leftHtml += `</div>`;
+                }
+            }
+            leftHtml += `</div>`;
+
+            // Construction de la colonne de droite (Diviseur en haut, Quotient en bas)
+            let rightHtml = `<div class="flex flex-col border-l-4 border-slate-700 pl-3 sm:pl-5 pt-2">`;
+
+            // Diviseur
+            rightHtml += `<div class="pb-2 border-b-4 border-slate-700 flex items-center gap-1">`;
+            String(state.divisor).split('').forEach(ch => {
+                rightHtml += `<div class="digit-box bg-emerald-100 text-emerald-800 border-2 border-emerald-300">${ch}</div>`;
+            });
+            rightHtml += `</div>`;
+
+            // Cases du Quotient
+            rightHtml += `<div class="pt-3 flex items-center gap-1.5">`;
+            for (let q = 0; q < totalQDigits; q++) {
+                const isCurrentQ = currentStep && currentStep.type === 'quotient' && currentStep.qIndex === q;
+                if (q < qDigits.length) {
+                    rightHtml += `<div class="digit-box bg-purple-100 text-purple-800 border-2 border-purple-400 animate-drop">${qDigits[q]}</div>`;
+                } else if (isCurrentQ) {
+                    rightHtml += `<div class="digit-box active-cell border-2 text-amber-700">?</div>`;
+                } else {
+                    rightHtml += `<div class="digit-box bg-white text-gray-300 border-2 border-dashed border-gray-300">•</div>`;
+                }
+            }
+            rightHtml += `</div>`;
+            rightHtml += `</div>`;
+
+            board.innerHTML = `<div class="flex items-stretch">${leftHtml}${rightHtml}</div>`;
+        }
+
+        // --- 8. GESTION DES INTERACTIONS DE L'ÉTAPE COURANTE ---
+        function renderCurrentStep() {
+            const controls = document.getElementById('step-controls');
+            const feedback = document.getElementById('feedback-msg');
+            controls.innerHTML = '';
+            feedback.textContent = '';
+
+            if (state.currentStepIdx >= state.steps.length) {
+                onDivisionFinished();
+                return;
+            }
+
+            const step = state.steps[state.currentStepIdx];
+            document.getElementById('step-badge').textContent = `Étape ${state.currentStepIdx + 1} / ${state.steps.length}`;
+            document.getElementById('coach-instruction').textContent = step.instruction;
+            document.getElementById('coach-hint').textContent = (step.type === 'quotient')
+                ? getQuotientHint(state.divisor, step.currentVal)
+                : step.hint;
+
+            if (step.type === 'take') {
+                // Proposer 2 ou 3 choix de découpage du dividende
+                const divStr = String(state.dividend);
+                const options = new Set([step.value]);
+                if (divStr.length >= 1) options.add(Number(divStr.slice(0, 1)));
+                if (divStr.length >= 2) options.add(Number(divStr.slice(0, 2)));
+                if (divStr.length >= 3) options.add(Number(divStr.slice(0, 3)));
+
+                Array.from(options).sort((a, b) => a - b).forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-3d bg-blue-500 hover:bg-blue-600 text-white font-bold px-4 py-2 rounded-xl text-base cursor-pointer';
+                    btn.textContent = `Prendre ${opt}`;
+                    btn.onclick = () => validateStepAnswer(opt);
+                    controls.appendChild(btn);
+                });
+            } else if (step.type === 'quotient') {
+                // Boutons rapides de 0 à 9 pour éviter les erreurs de clavier sur tablette/mobile
+                for (let n = 0; n <= 9; n++) {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-3d bg-purple-100 hover:bg-purple-500 hover:text-white text-purple-900 border border-purple-300 font-extrabold w-10 h-10 rounded-xl text-base cursor-pointer transition';
+                    btn.textContent = n;
+                    btn.onclick = () => validateStepAnswer(n);
+                    controls.appendChild(btn);
+                }
+            } else if (step.type === 'product' || step.type === 'remainder') {
+                // Champ de saisie numérique + bouton Valider
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.id = 'step-num-input';
+                input.placeholder = 'Ta réponse...';
+                input.className = 'border-2 border-amber-400 focus:border-amber-600 rounded-xl px-3 py-2 text-lg font-extrabold text-gray-800 w-36 outline-none bg-white';
+                input.onkeydown = (e) => {
+                    if (e.key === 'Enter') validateStepAnswer(parseInt(input.value, 10));
+                };
+
+                const btn = document.createElement('button');
+                btn.className = 'btn-3d bg-amber-500 hover:bg-amber-600 text-white font-bold px-5 py-2 rounded-xl text-base cursor-pointer';
+                btn.textContent = 'Poser ce nombre ✓';
+                btn.onclick = () => validateStepAnswer(parseInt(input.value, 10));
+
+                controls.appendChild(input);
+                controls.appendChild(btn);
+                setTimeout(() => input.focus(), 50);
+            } else if (step.type === 'bringdown') {
+                const btn = document.createElement('button');
+                btn.className = 'btn-3d bg-amber-500 hover:bg-amber-600 text-white font-bold px-5 py-2.5 rounded-xl text-base cursor-pointer flex items-center gap-2';
+                btn.innerHTML = `<span>⬇️ Abaisser le chiffre <strong>${step.digit}</strong></span>`;
+                btn.onclick = () => validateStepAnswer(step.digit);
+                controls.appendChild(btn);
+            }
+        }
+
+        function validateStepAnswer(userVal) {
+            const step = state.steps[state.currentStepIdx];
+            const feedback = document.getElementById('feedback-msg');
+            const coachBox = document.getElementById('coach-box');
+
+            const expected = (step.type === 'take') ? step.value : (step.type === 'bringdown' ? step.digit : step.expected);
+
+            if (userVal === expected) {
+                playSound('success');
+                state.completedSteps.push(step);
+                state.currentStepIdx++;
+
+                // Mettre à jour l'atelier visuel dès qu'un chiffre du quotient est trouvé
+                const qDigits = state.completedSteps.filter(s => s.type === 'quotient').map(s => s.expected);
+                const partialQuotient = qDigits.length > 0 ? Number(qDigits.join('')) : 0;
+                document.getElementById('badge-quotient').textContent = qDigits.length > 0 ? partialQuotient : '?';
+
+                // Calculer combien d'objets restent à ranger visuellement
+                const totalQDigits = state.steps.filter(s => s.type === 'quotient').length;
+                const powerOfTen = Math.pow(10, totalQDigits - qDigits.length);
+                const boxesFormedSoFar = partialQuotient * powerOfTen;
+                const remainingItems = Math.max(0, state.dividend - (boxesFormedSoFar * state.divisor));
+
+                updateVisualWorkshop(remainingItems, boxesFormedSoFar, null);
+                renderPotence();
+                renderCurrentStep();
+            } else {
+                playSound('error');
+                coachBox.classList.remove('animate-shake');
+                void coachBox.offsetWidth;
+                coachBox.classList.add('animate-shake');
+
+                if (isNaN(userVal)) {
+                    feedback.textContent = "Écris un nombre avant de valider !";
+                } else if (step.type === 'take') {
+                    feedback.textContent = userVal < state.divisor
+                        ? `${userVal} est trop petit pour partager par ${state.divisor} !`
+                        : `On prend juste le plus petit nombre à gauche supérieur ou égal à ${state.divisor}.`;
+                } else if (step.type === 'quotient') {
+                    feedback.textContent = userVal * state.divisor > step.currentVal
+                        ? `Oups, ${userVal} × ${state.divisor} = ${userVal * state.divisor}, c'est plus grand que ${step.currentVal} !`
+                        : `On peut mettre encore plus de paquets de ${state.divisor} dans ${step.currentVal} !`;
+                } else {
+                    feedback.textContent = "Pas tout à fait ! Vérifie ton calcul et réessaie.";
+                }
+            }
+        }
+
+        // --- 9. MISE À JOUR DE L'ATELIER VISUEL CONCRET ---
+        function updateVisualWorkshop(remaining, boxesCount, finalRemainder) {
+            document.getElementById('vis-remaining-count').textContent = remaining;
+            const pct = Math.max(0, Math.min(100, (remaining / state.dividend) * 100));
+            document.getElementById('vis-progress-bar').style.width = `${pct}%`;
+
+            document.getElementById('vis-boxes-count').textContent = `${boxesCount} boîte${boxesCount > 1 ? 's' : ''}`;
+            const container = document.getElementById('vis-boxes-container');
+
+            if (boxesCount === 0) {
+                container.innerHTML = `<span class="text-xs text-gray-400 italic">Commence la division à droite pour remplir les boîtes !</span>`;
+            } else {
+                container.innerHTML = '';
+                const displayLimit = Math.min(boxesCount, 36);
+                for (let i = 0; i < displayLimit; i++) {
+                    const badge = document.createElement('span');
+                    badge.className = 'inline-flex items-center gap-0.5 bg-purple-100 border border-purple-300 text-purple-900 text-xs font-bold px-2 py-1 rounded-lg';
+                    badge.innerHTML = `${state.boxIcon} <span class="text-[10px]">×${state.divisor}</span>`;
+                    container.appendChild(badge);
+                }
+                if (boxesCount > displayLimit) {
+                    const more = document.createElement('span');
+                    more.className = 'text-xs font-extrabold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200';
+                    more.textContent = `+ ${boxesCount - displayLimit} autres boîtes !`;
+                    container.appendChild(more);
+                }
+            }
+
+            if (finalRemainder !== null) {
+                const leftoverBox = document.getElementById('vis-leftover-box');
+                leftoverBox.classList.remove('hidden');
+                document.getElementById('vis-leftover-count').textContent = finalRemainder;
+                const iconsEl = document.getElementById('vis-leftover-icons');
+                iconsEl.innerHTML = '';
+                if (finalRemainder === 0) {
+                    iconsEl.innerHTML = `<span class="text-xs font-bold text-emerald-700">Aucun reste ! Le partage tombe pile poil !</span>`;
+                } else {
+                    const limit = Math.min(finalRemainder, 25);
+                    for (let i = 0; i < limit; i++) {
+                        iconsEl.innerHTML += `<span>${state.itemIcon}</span>`;
+                    }
+                    if (finalRemainder > limit) {
+                        iconsEl.innerHTML += `<span class="text-xs font-bold text-rose-700">+ ${finalRemainder - limit}</span>`;
+                    }
+                }
+            }
+        }
+
+        // --- 10. FIN DE LA DIVISION & ÉGALITÉ DE VÉRIFICATION ---
+        function onDivisionFinished() {
+            const finalQuotient = Math.floor(state.dividend / state.divisor);
+            const finalRemainder = state.dividend % state.divisor;
+
+            document.getElementById('badge-quotient').textContent = finalQuotient;
+            document.getElementById('badge-remainder').textContent = finalRemainder;
+
+            updateVisualWorkshop(finalRemainder, finalQuotient, finalRemainder);
+
+            document.getElementById('step-badge').textContent = "Mission accomplie ! 🎉";
+            document.getElementById('coach-instruction').textContent = `Super ! ${state.dividend} divisé par ${state.divisor} donne un quotient de ${finalQuotient} et il reste ${finalRemainder}.`;
+            document.getElementById('coach-hint').textContent = "Complète maintenant l'égalité de vérification ci-dessous pour gagner ton étoile !";
+            document.getElementById('step-controls').innerHTML = `<span class="text-xs font-bold text-emerald-700">⬇️ Regarde l'encadré vert juste en dessous !</span>`;
+
+            // Préparer l'encadré de vérification
+            document.getElementById('verif-r-rule').textContent = finalRemainder;
+            document.getElementById('verif-d-rule').textContent = state.divisor;
+            document.getElementById('verif-divisor').textContent = state.divisor;
+            document.getElementById('verif-dividend').textContent = state.dividend;
+            document.getElementById('verif-input-q').value = '';
+            document.getElementById('verif-input-r').value = '';
+            document.getElementById('verif-feedback').textContent = '';
+            document.getElementById('verification-panel').classList.remove('hidden');
+        }
+
+        function checkFinalVerification() {
+            const expectedQ = Math.floor(state.dividend / state.divisor);
+            const expectedR = state.dividend % state.divisor;
+            const inputQ = parseInt(document.getElementById('verif-input-q').value, 10);
+            const inputR = parseInt(document.getElementById('verif-input-r').value, 10);
+            const feedback = document.getElementById('verif-feedback');
+
+            if (inputQ === expectedQ && inputR === expectedR) {
+                playSound('win');
+                if (!state.completed) {
+                    state.completed = true;
+                    state.stars++;
+                    document.getElementById('star-count').textContent = state.stars;
+                }
+                feedback.className = 'text-center text-sm font-extrabold mt-2 text-emerald-700';
+                feedback.textContent = `🌟 BRAVO ! (${state.divisor} × ${expectedQ}) + ${expectedR} = ${state.dividend}. Tu as gagné une étoile !`;
+
+                if (typeof confetti === 'function') {
+                    confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+                }
+            } else {
+                playSound('error');
+                feedback.className = 'text-center text-xs font-bold mt-2 text-rose-600';
+                feedback.textContent = "Vérifie bien les deux nombres : le Quotient est en violet, le Reste est en rose !";
+            }
+        }
+
+        // --- DÉMARRAGE AU CHARGEMENT DE LA PAGE ---
+        window.onload = function() {
+            // Lancer directement avec le premier défi du cours CM1 (314 ÷ 7)
+            selectPreset('cours1');
+        };
+    </script>
+</body>
+</html>
